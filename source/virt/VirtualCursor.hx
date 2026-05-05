@@ -6,14 +6,15 @@ import flixel.group.FlxGroup;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
 import openfl.events.MouseEvent;
+import flixel.input.touch.FlxTouch;
 
 class VirtualCursor extends FlxGroup
 {
     public var cursorSprite:FlxSprite;
-    public var speed:Float = 15.0; 
     
     private var isHovering:Bool = false;
     private var _clickTween:FlxTween;
+    private var sensitivity:Float = 1.5;
 
     private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/cursor.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
@@ -33,20 +34,45 @@ class VirtualCursor extends FlxGroup
 
     override public function update(elapsed:Float):Void
     {
-        super.update(elapsed);
-        
+        handleTouchInput();
+
         FlxG.mouse.setGlobalScreenPositionUnsafe(cursorSprite.x, cursorSprite.y);
         
         updateHoverLogic();
+
+        super.update(elapsed);
+    }
+
+    private function handleTouchInput():Void 
+    {
+        var touch:FlxTouch = FlxG.touches.getFirst();
+        
+        if (touch != null) {
+            if (touch.pressed) {
+                cursorSprite.x += touch.deltaX * sensitivity;
+                cursorSprite.y += touch.deltaY * sensitivity;
+            }
+            
+            if (touch.justReleased && touch.timeInSeconds < 0.2) {
+                clickDown();
+                clickUp();
+            }
+        }
+        
+        if (cursorSprite.x < 0) cursorSprite.x = 0;
+        if (cursorSprite.x > FlxG.width) cursorSprite.x = FlxG.width;
+        if (cursorSprite.y < 0) cursorSprite.y = 0;
+        if (cursorSprite.y > FlxG.height) cursorSprite.y = FlxG.height;
     }
 
     private function updateHoverLogic():Void
     {
         var currentlyHovering:Bool = false;
-
+        
         FlxG.state.forEachOfType(FlxSprite, function(spr:FlxSprite) {
-            if (spr != null && spr.visible && spr.exists) {
-                if (spr.overlapsPoint(FlxG.mouse.getScreenPosition())) {
+            if (spr != null && spr.visible && spr.exists && spr != cursorSprite) {
+                
+                if (spr.getScreenBounds(null, spr.cameras[0]).contains(cursorSprite.x, cursorSprite.y)) {
                     currentlyHovering = true;
                 }
             }
@@ -55,29 +81,20 @@ class VirtualCursor extends FlxGroup
         if (currentlyHovering != isHovering) {
             isHovering = currentlyHovering;
             cursorSprite.loadGraphic(isHovering ? HOVER_IMG : CURSOR_IMG);
+            
+            cursorSprite.scale.set(1, 1); 
         }
     }
 
-    public function move(dx:Float, dy:Float):Void
-    {
-        cursorSprite.x += dx * speed;
-        cursorSprite.y += dy * speed;
-        
-        cursorSprite.x = Math.max(0, Math.min(FlxG.width - cursorSprite.width, cursorSprite.x));
-        cursorSprite.y = Math.max(0, Math.min(FlxG.height - cursorSprite.height, cursorSprite.y));
-    }
-
-    public function clickDown():Void
-    {
+    public function clickDown():Void {
         if (_clickTween != null) _clickTween.cancel();
         cursorSprite.scale.set(0.8, 0.8);
         _clickTween = FlxTween.tween(cursorSprite.scale, {x: 1, y: 1}, 0.1, {ease: FlxEase.backOut});
-
+        
         FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false, cursorSprite.x, cursorSprite.y));
     }
 
-    public function clickUp():Void
-    {
+    public function clickUp():Void {
         FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
     }
 }
