@@ -6,7 +6,6 @@ import flixel.group.FlxGroup;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
 import openfl.events.MouseEvent;
-import funkin.backend.utils.Paths;
 
 class VirtualCursor extends FlxGroup
 {
@@ -16,15 +15,15 @@ class VirtualCursor extends FlxGroup
     private var isHovering:Bool = false;
     private var _clickTween:FlxTween;
 
-    private static inline var IMAGE_PATH:String = "menus/cursor/";
+    private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/cursor.png";
+    private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
 
     public function new(startX:Float = 0, startY:Float = 0)
     {
         super();
         
         cursorSprite = new FlxSprite(startX, startY);
-
-        cursorSprite.loadGraphic(Paths.image(IMAGE_PATH + "cursor"));
+        cursorSprite.loadGraphic(CURSOR_IMG);
         add(cursorSprite);
 
         #if mobile
@@ -46,7 +45,7 @@ class VirtualCursor extends FlxGroup
         var currentlyHovering:Bool = false;
 
         FlxG.state.forEachOfType(FlxSprite, function(spr:FlxSprite) {
-            if (spr != null && spr.visible && spr.exists && spr.active) {
+            if (spr != null && spr.visible && spr.exists) {
                 if (spr.overlapsPoint(FlxG.mouse.getScreenPosition())) {
                     currentlyHovering = true;
                 }
@@ -55,8 +54,7 @@ class VirtualCursor extends FlxGroup
 
         if (currentlyHovering != isHovering) {
             isHovering = currentlyHovering;
-            var graphicName:String = isHovering ? "hover" : "cursor";
-            cursorSprite.loadGraphic(Paths.image(IMAGE_PATH + graphicName));
+            cursorSprite.loadGraphic(isHovering ? HOVER_IMG : CURSOR_IMG);
         }
     }
 
