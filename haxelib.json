@@ -1,0 +1,11 @@
+{
+    "name": "virtual-cursor",
+    "url": "https://github.com/ChanceXML/virtual-cursor",
+    "license": "MIT",
+    "tags": ["flixel", "android", "mouse", "input"],
+    "description": "A virtual mouse implementation for HaxeFlixel Android ports that natively hooks into FlxG.mouse.",
+    "version": "1.0.0",
+    "classPath": "source",
+    "releasenote": "Initial release",
+    "contributors": ["ChanceXML"],
+}
