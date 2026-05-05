@@ -7,6 +7,7 @@ import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
 import openfl.events.MouseEvent;
 import flixel.input.touch.FlxTouch;
+import flixel.math.FlxPoint;
 
 class VirtualCursor extends FlxGroup
 {
@@ -16,16 +17,21 @@ class VirtualCursor extends FlxGroup
     private var _clickTween:FlxTween;
     private var sensitivity:Float = 1.5;
 
+    private var _lastTouchPosition:FlxPoint; 
+    private var _dragDistance:Float = 0.0;
+
     private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/cursor.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
 
     public function new(startX:Float = 0, startY:Float = 0)
     {
         super();
-        
+
         cursorSprite = new FlxSprite(startX, startY);
         cursorSprite.loadGraphic(CURSOR_IMG);
         add(cursorSprite);
+        
+        _lastTouchPosition = new FlxPoint();
 
         #if mobile
         FlxG.mouse.visible = false;
@@ -48,17 +54,30 @@ class VirtualCursor extends FlxGroup
         var touch:FlxTouch = FlxG.touches.getFirst();
         
         if (touch != null) {
-            if (touch.pressed) {
-                cursorSprite.x += touch.deltaX * sensitivity;
-                cursorSprite.y += touch.deltaY * sensitivity;
+            if (touch.justPressed) {
+                _lastTouchPosition.set(touch.screenX, touch.screenY);
+                _dragDistance = 0;
             }
-            
-            if (touch.justReleased && touch.timeInSeconds < 0.2) {
-                clickDown();
-                clickUp();
+            else if (touch.pressed) {
+                var dx:Float = touch.screenX - _lastTouchPosition.x;
+                var dy:Float = touch.screenY - _lastTouchPosition.y;
+                
+                cursorSprite.x += dx * sensitivity;
+                cursorSprite.y += dy * sensitivity;
+                
+                _dragDistance += Math.abs(dx) + Math.abs(dy);
+
+                _lastTouchPosition.set(touch.screenX, touch.screenY);
+            }
+
+            if (touch.justReleased) {
+                if (_dragDistance < 5) {
+                    clickDown();
+                    clickUp();
+                }
             }
         }
-        
+
         if (cursorSprite.x < 0) cursorSprite.x = 0;
         if (cursorSprite.x > FlxG.width) cursorSprite.x = FlxG.width;
         if (cursorSprite.y < 0) cursorSprite.y = 0;
@@ -68,11 +87,11 @@ class VirtualCursor extends FlxGroup
     private function updateHoverLogic():Void
     {
         var currentlyHovering:Bool = false;
-        
+
         FlxG.state.forEachOfType(FlxSprite, function(spr:FlxSprite) {
             if (spr != null && spr.visible && spr.exists && spr != cursorSprite) {
-                
-                if (spr.getScreenBounds(null, spr.cameras[0]).contains(cursorSprite.x, cursorSprite.y)) {
+                var rect = spr.getScreenBounds(null, spr.cameras[0]);
+                if (rect.containsXY(cursorSprite.x, cursorSprite.y)) {
                     currentlyHovering = true;
                 }
             }
@@ -81,7 +100,6 @@ class VirtualCursor extends FlxGroup
         if (currentlyHovering != isHovering) {
             isHovering = currentlyHovering;
             cursorSprite.loadGraphic(isHovering ? HOVER_IMG : CURSOR_IMG);
-            
             cursorSprite.scale.set(1, 1); 
         }
     }
