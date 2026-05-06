@@ -1,4 +1,4 @@
-package mobile.utils;
+package virt;
 
 import flixel.FlxG;
 import flixel.FlxSprite;
