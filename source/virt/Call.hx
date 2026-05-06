@@ -2,7 +2,7 @@ package virt;
 
 import flixel.FlxG;
 import flixel.FlxCamera;
-
+@:keep
 class Call {
     public static var mouse:VirtualCursor;
     public static var mouseCam:FlxCamera;
