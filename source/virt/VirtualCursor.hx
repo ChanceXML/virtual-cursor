@@ -19,8 +19,8 @@ class VirtualCursor extends FlxGroup
 
     private var _lastTouchPosition:FlxPoint; 
     private var _dragDistance:Float = 0.0;
-
-    private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/cursor.png";
+    
+    private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/mouse.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
 
     public function new(startX:Float = 0, startY:Float = 0)
@@ -90,7 +90,9 @@ class VirtualCursor extends FlxGroup
 
         FlxG.state.forEachOfType(FlxSprite, function(spr:FlxSprite) {
             if (spr != null && spr.visible && spr.exists && spr != cursorSprite) {
-                var rect = spr.getScreenBounds(null, spr.cameras[0]);
+                var targetCam = spr.camera; 
+                var rect = spr.getScreenBounds(null, targetCam);
+                
                 if (rect.containsXY(cursorSprite.x, cursorSprite.y)) {
                     currentlyHovering = true;
                 }
@@ -109,10 +111,14 @@ class VirtualCursor extends FlxGroup
         cursorSprite.scale.set(0.8, 0.8);
         _clickTween = FlxTween.tween(cursorSprite.scale, {x: 1, y: 1}, 0.1, {ease: FlxEase.backOut});
         
-        FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false, cursorSprite.x, cursorSprite.y));
+        if (FlxG.stage != null) {
+            FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false, cursorSprite.x, cursorSprite.y));
+        }
     }
 
     public function clickUp():Void {
-        FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
+        if (FlxG.stage != null) {
+            FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
+        }
     }
 }
