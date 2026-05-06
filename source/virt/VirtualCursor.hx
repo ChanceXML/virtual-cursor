@@ -1,27 +1,34 @@
-package virt;
+package mobile.utils;
 
 import flixel.FlxG;
 import flixel.FlxSprite;
+import flixel.FlxCamera;
 import flixel.group.FlxGroup;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
 import openfl.events.MouseEvent;
 import flixel.input.touch.FlxTouch;
 import flixel.math.FlxPoint;
+import flixel.util.FlxDestroyUtil;
 import haxe.Timer;
+import openfl.Lib;
+
+import flixel.text.FlxInputText; 
+
 @:keep
 class VirtualCursor extends FlxGroup
 {
     public var cursorSprite:FlxSprite;
+    public var sensitivity:Float = 1.5;
     
+    public var disableGhostTouch:Bool = false;
+
     private var isHovering:Bool = false;
     private var _clickTween:FlxTween;
-    private var sensitivity:Float = 1.5;
-
     private var _lastTouchPosition:FlxPoint; 
     private var _dragDistance:Float = 0.0;
     private var _pressStartTime:Float = 0.0;
-
+    
     private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/mouse.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
 
@@ -31,6 +38,7 @@ class VirtualCursor extends FlxGroup
 
         cursorSprite = new FlxSprite(startX, startY);
         cursorSprite.loadGraphic(CURSOR_IMG);
+        cursorSprite.antialiasing = true;
         add(cursorSprite);
         
         _lastTouchPosition = new FlxPoint();
@@ -47,12 +55,6 @@ class VirtualCursor extends FlxGroup
         FlxG.mouse.setGlobalScreenPositionUnsafe(cursorSprite.x, cursorSprite.y);
         
         updateHoverLogic();
-
-        var lastCam = FlxG.cameras.list[FlxG.cameras.list.length - 1];
-        if (lastCam != null && lastCam != cursorSprite.camera) {
-            FlxG.cameras.remove(cursorSprite.camera, false);
-            FlxG.cameras.add(cursorSprite.camera, false);
-        }
         
         super.update(elapsed);
     }
@@ -87,15 +89,17 @@ class VirtualCursor extends FlxGroup
 
             if (touch.justReleased) {
                 var holdTime:Float = Timer.stamp() - _pressStartTime;
-                if (_dragDistance < 10 && holdTime < 0.25) {
+                if (_dragDistance < 10 && holdTime < 0.35) {
                     clickDown();
                     clickUp();
                 }
             }
 
-            @:privateAccess {
-                touch._globalScreenX = -10000;
-                touch._globalScreenY = -10000;
+            if (!disableGhostTouch) {
+                @:privateAccess {
+                    touch._globalScreenX = -10000;
+                    touch._globalScreenY = -10000;
+                }
             }
         }
     }
@@ -104,22 +108,22 @@ class VirtualCursor extends FlxGroup
     {
         var currentlyHovering:Bool = false;
 
-        FlxG.state.forEachOfType(FlxSprite, function(spr:FlxSprite) {
-            if (spr != null && spr.visible && spr.exists && spr != cursorSprite) {
-                var targetCam = spr.camera; 
-                var rect = spr.getScreenBounds(null, targetCam);
-                if (rect.containsXY(cursorSprite.x, cursorSprite.y)) currentlyHovering = true;
+        var checkOverlap = function(obj:Dynamic) {
+            if (obj != null && obj.visible && obj.exists && obj != cursorSprite) {
+                if (Std.isOfType(obj, FlxSprite)) {
+                    var spr:FlxSprite = cast obj;
+                    var targetCam = spr.camera; 
+                    if (spr.getScreenBounds(null, targetCam).containsXY(cursorSprite.x, cursorSprite.y)) {
+                        currentlyHovering = true;
+                    }
+                }
             }
-        });
+        };
+
+        FlxG.state.forEachOfType(FlxSprite, function(spr) checkOverlap(spr));
         
         if (FlxG.state.subState != null) {
-             FlxG.state.subState.forEachOfType(FlxSprite, function(spr:FlxSprite) {
-                if (spr != null && spr.visible && spr.exists && spr != cursorSprite) {
-                    var targetCam = spr.camera; 
-                    var rect = spr.getScreenBounds(null, targetCam);
-                    if (rect.containsXY(cursorSprite.x, cursorSprite.y)) currentlyHovering = true;
-                }
-            });
+             FlxG.state.subState.forEachOfType(FlxSprite, function(spr) checkOverlap(spr));
         }
 
         if (currentlyHovering != isHovering) {
@@ -142,12 +146,45 @@ class VirtualCursor extends FlxGroup
     public function clickUp():Void {
         if (FlxG.stage != null) {
             FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
+            
+            checkForInputText();
+        }
+    }
+    
+    private function checkForInputText():Void {
+        var foundInput:Bool = false;
+        
+        var checkObject = function(obj:Dynamic) {
+            if (obj != null && obj.visible && obj.exists) {
+                if (Std.isOfType(obj, FlxInputText)) {
+                    var input:FlxInputText = cast obj;
+                    var targetCam = input.camera;
+                    
+                    if (input.getScreenBounds(null, targetCam).containsXY(cursorSprite.x, cursorSprite.y)) {
+                        @:privateAccess input.hasFocus = true;
+                        Lib.application.window.textInputEnabled = true;
+                        foundInput = true;
+                    }
+                }
+            }
+        };
+
+        FlxG.state.forEach(checkObject, true);
+        if (FlxG.state.subState != null) {
+            FlxG.state.subState.forEach(checkObject, true);
         }
     }
     
     override public function destroy():Void {
         super.destroy();
-        _clickTween = null;
-        _lastTouchPosition = null;
+        
+        if (_clickTween != null) {
+            _clickTween.cancel();
+            _clickTween = null;
+        }
+        
+        _lastTouchPosition = FlxDestroyUtil.put(_lastTouchPosition);
+        
+        cursorSprite = null; 
     }
 }
