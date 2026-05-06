@@ -9,7 +9,7 @@ import openfl.events.MouseEvent;
 import flixel.input.touch.FlxTouch;
 import flixel.math.FlxPoint;
 import haxe.Timer;
-
+@:keep
 class VirtualCursor extends FlxGroup
 {
     public var cursorSprite:FlxSprite;
