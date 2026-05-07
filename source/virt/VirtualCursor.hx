@@ -29,6 +29,7 @@ class VirtualCursor extends FlxGroup
     private var _startTouchPos:FlxPoint;
     private var _trackedTouchID:Int = -1; 
     private var _movedSignificantly:Bool = false;
+    private var _clickTimer:Float = 0;
     
     private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/mouse.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
@@ -48,13 +49,33 @@ class VirtualCursor extends FlxGroup
 
         #if mobile
         FlxG.mouse.visible = false;
+        FlxG.mouse.enabled = false; 
         #end
     }
 
     override public function update(elapsed:Float):Void
     {
         handleTouchInput();
+        
         FlxG.mouse.setGlobalScreenPositionUnsafe(cursorSprite.x, cursorSprite.y);
+        
+        if (_clickTimer > 0) 
+        {
+            _clickTimer -= elapsed;
+            if (_clickTimer <= 0) 
+            {
+                @:privateAccess FlxG.mouse._leftButton.release();
+                if (FlxG.stage != null) {
+                    FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
+                }
+            }
+        }
+
+        if (FlxG.cameras.list.length > 0) 
+        {
+            cursorSprite.cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
+        }
+
         updateHoverLogic();
         super.update(elapsed);
     }
@@ -130,14 +151,13 @@ class VirtualCursor extends FlxGroup
         cursorSprite.scale.set(0.7, 0.7);
         _clickTween = FlxTween.tween(cursorSprite.scale, {x: 1, y: 1}, 0.15, {ease: FlxEase.backOut});
         
+        @:privateAccess FlxG.mouse._leftButton.press();
+        _clickTimer = 0.05; 
+        
         if (FlxG.stage != null) 
         {
             FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false, cursorSprite.x, cursorSprite.y));
-            
-            haxe.Timer.delay(function() {
-                FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
-                checkForInputText();
-            }, 20);
+            checkForInputText();
         }
     }
 
@@ -191,6 +211,11 @@ class VirtualCursor extends FlxGroup
         _lastTouchPos = FlxDestroyUtil.put(_lastTouchPos);
         _startTouchPos = FlxDestroyUtil.put(_startTouchPos);
         if (_clickTween != null) _clickTween.cancel();
+        
+        #if mobile
+        FlxG.mouse.enabled = true; 
+        #end
+        
         super.destroy();
     }
 }
