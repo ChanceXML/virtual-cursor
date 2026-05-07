@@ -19,7 +19,6 @@ class VirtualCursor extends FlxGroup
 {
     public var cursorSprite:FlxSprite;
     public var sensitivity:Float = 1.5;
-    
     public var tapThreshold:Float = 15.0; 
     
     private var isHovering:Bool = false;
@@ -44,8 +43,8 @@ class VirtualCursor extends FlxGroup
         cursorSprite.scrollFactor.set(0, 0); 
         add(cursorSprite);
         
-        _lastTouchPos = new FlxPoint();
-        _startTouchPos = new FlxPoint();
+        _lastTouchPos = FlxPoint.get();
+        _startTouchPos = FlxPoint.get();
 
         #if mobile
         FlxG.mouse.visible = false;
@@ -55,9 +54,7 @@ class VirtualCursor extends FlxGroup
     override public function update(elapsed:Float):Void
     {
         handleTouchInput();
-        
         FlxG.mouse.setGlobalScreenPositionUnsafe(cursorSprite.x, cursorSprite.y);
-        
         updateHoverLogic();
         super.update(elapsed);
     }
@@ -105,7 +102,10 @@ class VirtualCursor extends FlxGroup
                 cursorSprite.x = FlxMath.bound(cursorSprite.x + dx * sensitivity, 0, FlxG.width);
                 cursorSprite.y = FlxMath.bound(cursorSprite.y + dy * sensitivity, 0, FlxG.height);
                 
-                var distFromStart = FlxMath.distanceBetween(new FlxPoint(activeTouch.screenX, activeTouch.screenY), _startTouchPos);
+                var diffX:Float = activeTouch.screenX - _startTouchPos.x;
+                var diffY:Float = activeTouch.screenY - _startTouchPos.y;
+                var distFromStart:Float = Math.sqrt(diffX * diffX + diffY * diffY);
+
                 if (distFromStart > tapThreshold) {
                     _movedSignificantly = true;
                 }
