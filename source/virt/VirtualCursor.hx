@@ -144,29 +144,63 @@ class VirtualCursor extends FlxGroup
     {
         _currentlyHovering = false;
 
-        FlxG.state.forEachOfType(FlxSprite, checkHoverOverlap);
-        if (FlxG.state.subState != null) 
+        if (FlxG.state != null)
         {
-             FlxG.state.subState.forEachOfType(FlxSprite, checkHoverOverlap);
+            FlxG.state.forEachOfType(FlxSprite, checkHoverOverlap);
+
+            if (FlxG.state.subState != null)
+            {
+                FlxG.state.subState.forEachOfType(FlxSprite, checkHoverOverlap);
+            }
         }
 
-        if (_currentlyHovering != isHovering) 
+        if (_currentlyHovering != isHovering)
         {
             isHovering = _currentlyHovering;
-            cursorSprite.loadGraphic(isHovering ? HOVER_IMG : CURSOR_IMG);
-            cursorSprite.scale.set(1, 1); 
+
+            cursorSprite.loadGraphic(
+                isHovering ? HOVER_IMG : CURSOR_IMG
+            );
+  
+            cursorSprite.scale.set(1, 1);
         }
     }
 
-    private function checkHoverOverlap(spr:FlxSprite):Void 
+    private function checkHoverOverlap(spr:FlxSprite):Void
     {
-        if (_currentlyHovering || spr == null || !spr.visible || !spr.exists || spr == cursorSprite) return;
-        
-        if (FlxG.mouse.overlaps(spr, spr.camera)) 
+        if (_currentlyHovering)
+            return;
+
+        if (spr == null)
+            return;
+
+        if (!spr.visible || !spr.exists)
+            return;
+
+        if (spr == cursorSprite)
+            return;
+
+        if (spr.cameras == null)
+            return;
+
+        var cam = null;
+  
+        if (spr.cameras.length > 0)
         {
-            _currentlyHovering = true;
+            cam = spr.cameras[0];
         }
+
+        try
+        {
+            if (FlxG.mouse.overlaps(spr, cam))
+            {
+                _currentlyHovering = true;
+            }
+        }
+        catch (e)
+        {
     }
+}
 
     public function clickDown():Void 
     {
