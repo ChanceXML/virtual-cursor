@@ -6,7 +6,6 @@ import flixel.FlxBasic;
 import flixel.group.FlxGroup;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
-import openfl.events.MouseEvent;
 import flixel.input.touch.FlxTouch;
 import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
@@ -20,7 +19,8 @@ class VirtualCursor extends FlxGroup
 {
     public var cursorSprite:FlxSprite;
     public var sensitivity:Float = 1.5;
-    public var tapThreshold:Float = 15.0; 
+    public var tapThreshold:Float = 20.0;
+    public var holdDelay:Float = 0.2;
     
     private var isHovering:Bool = false;
     private var _currentlyHovering:Bool = false;
@@ -29,7 +29,10 @@ class VirtualCursor extends FlxGroup
     private var _lastTouchPos:FlxPoint; 
     private var _startTouchPos:FlxPoint;
     private var _trackedTouchID:Int = -1; 
-    private var _isHolding:Bool = false;
+    
+    private var _touchState:Int = 0;
+    private var _touchTimer:Float = 0;
+    private var _clickTimer:Float = 0;
     
     private static inline var CURSOR_IMG:String = "assets/images/menus/cursor/mouse.png";
     private static inline var HOVER_IMG:String = "assets/images/menus/cursor/hover.png";
@@ -62,9 +65,18 @@ class VirtualCursor extends FlxGroup
 
     override public function update(elapsed:Float):Void
     {
-        handleTouchInput();
+        handleTouchInput(elapsed);
         
         FlxG.mouse.setGlobalScreenPositionUnsafe(cursorSprite.x, cursorSprite.y);
+
+        if (_clickTimer > 0)
+        {
+            _clickTimer -= elapsed;
+            if (_clickTimer <= 0)
+            {
+                handleRelease();
+            }
+        }
 
         if (FlxG.cameras.list.indexOf(_cursorCamera) < FlxG.cameras.list.length - 1)
         {
@@ -76,7 +88,7 @@ class VirtualCursor extends FlxGroup
         super.update(elapsed);
     }
 
-    private function handleTouchInput():Void 
+    private function handleTouchInput(elapsed:Float):Void 
     {
         var activeTouch:FlxTouch = null;
 
@@ -90,7 +102,13 @@ class VirtualCursor extends FlxGroup
                     break;
                 }
             }
-            if (activeTouch == null) handleRelease();
+            
+            if (activeTouch == null) 
+            {
+                if (_touchState == 3) handleRelease();
+                _touchState = 0;
+                _trackedTouchID = -1;
+            }
         }
 
         if (activeTouch == null) 
@@ -103,7 +121,8 @@ class VirtualCursor extends FlxGroup
                     _trackedTouchID = touch.touchPointID;
                     _lastTouchPos.set(touch.screenX, touch.screenY);
                     _startTouchPos.set(touch.screenX, touch.screenY);
-                    handlePress();
+                    _touchState = 1;
+                    _touchTimer = 0;
                     break;
                 }
             }
@@ -111,7 +130,7 @@ class VirtualCursor extends FlxGroup
         
         if (activeTouch != null) 
         {
-            if (activeTouch.pressed) 
+            if (activeTouch.pressed || activeTouch.justReleased) 
             {
                 var dx:Float = activeTouch.screenX - _lastTouchPos.x;
                 var dy:Float = activeTouch.screenY - _lastTouchPos.y;
@@ -121,38 +140,63 @@ class VirtualCursor extends FlxGroup
                 
                 _lastTouchPos.set(activeTouch.screenX, activeTouch.screenY);
             }
+
+            if (activeTouch.pressed && _touchState == 1)
+            {
+                _touchTimer += elapsed;
+                var distX = activeTouch.screenX - _startTouchPos.x;
+                var distY = activeTouch.screenY - _startTouchPos.y;
+                var distFromStart = Math.sqrt(distX * distX + distY * distY);
+
+                if (distFromStart > tapThreshold)
+                {
+                    _touchState = 2;
+                }
+                else if (_touchTimer >= holdDelay)
+                {
+                    _touchState = 3;
+                    handlePress();
+                }
+            }
             
             if (activeTouch.justReleased) 
             {
-                handleRelease();
+                if (_touchState == 1)
+                {
+                    performQuickClick();
+                }
+                else if (_touchState == 3)
+                {
+                    handleRelease();
+                }
+                
+                _touchState = 0;
+                _trackedTouchID = -1;
             }
         }
     }
 
+    private function performQuickClick():Void
+    {
+        handlePress();
+        _clickTimer = 0.05;
+    }
+
     private function handlePress():Void
     {
-        _isHolding = true;
         if (_clickTween != null) _clickTween.cancel();
         cursorSprite.scale.set(0.7, 0.7);
         
         @:privateAccess FlxG.mouse._leftButton.press();
-        if (FlxG.stage != null) 
-            FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false, cursorSprite.x, cursorSprite.y));
-        
         checkForInputText();
     }
 
     private function handleRelease():Void
     {
-        _isHolding = false;
-        _trackedTouchID = -1;
-        
         if (_clickTween != null) _clickTween.cancel();
         _clickTween = FlxTween.tween(cursorSprite.scale, {x: 1, y: 1}, 0.15, {ease: FlxEase.backOut});
 
         @:privateAccess FlxG.mouse._leftButton.release();
-        if (FlxG.stage != null)
-            FlxG.stage.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false, cursorSprite.x, cursorSprite.y));
     }
 
     private function updateHoverLogic():Void
