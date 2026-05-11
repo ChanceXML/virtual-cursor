@@ -4,7 +4,6 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.FlxBasic;
 import flixel.FlxCamera;
-import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
 import flixel.util.FlxDestroyUtil;
@@ -12,13 +11,7 @@ import flixel.util.FlxColor;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
 import flixel.input.touch.FlxTouch;
-import openfl.Lib;
 
-/**
- * Virtual Cursor
- * Added as a Plugin to override all states/substates.
- * Use VirtualCursor.init() to start and VirtualCursor.killCursor() to stop.
- */
 @:keep
 class VirtualCursor extends FlxBasic
 {
@@ -26,7 +19,6 @@ class VirtualCursor extends FlxBasic
 
     public var cursorSprite:FlxSprite;
     public var sensitivity:Float = 1.5;
-    public var tapThreshold:Float = 15.0;
     
     private var _lastTouchPos:FlxPoint;
     private var _trackedTouchID:Int = -1;
@@ -35,11 +27,11 @@ class VirtualCursor extends FlxBasic
 
     public static function init():Void {
         if (instance == null) {
-            instance = new VirtualCursor();
+            instance = new VirtualCursor(FlxG.width / 2, FlxG.height / 2);
             FlxG.plugins.add(instance);
         }
     }
-    
+
     public static function Kill():Void {
         if (instance != null) {
             FlxG.plugins.remove(instance);
@@ -48,7 +40,7 @@ class VirtualCursor extends FlxBasic
         }
     }
 
-    public function new()
+    public function new(startX:Float = 0, startY:Float = 0)
     {
         super();
         
@@ -56,7 +48,7 @@ class VirtualCursor extends FlxBasic
         _cursorCamera.bgColor = FlxColor.TRANSPARENT;
         FlxG.cameras.add(_cursorCamera, false);
 
-        cursorSprite = new FlxSprite(FlxG.width / 2, FlxG.height / 2);
+        cursorSprite = new FlxSprite(startX, startY);
         cursorSprite.loadGraphic("assets/images/menus/cursor/mouse.png");
         cursorSprite.antialiasing = true;
         cursorSprite.cameras = [_cursorCamera];
@@ -113,9 +105,7 @@ class VirtualCursor extends FlxBasic
             
             _lastTouchPos.set(activeTouch.screenX, activeTouch.screenY);
 
-            if (activeTouch.justPressed) {
-                handlePress();
-            }
+            if (activeTouch.justPressed) handlePress();
             if (activeTouch.justReleased) {
                 handleRelease();
                 _trackedTouchID = -1;
